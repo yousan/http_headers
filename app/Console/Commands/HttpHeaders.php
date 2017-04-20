@@ -16,9 +16,9 @@ class HttpHeaders extends Command
      * @var string
      */
     protected $signature = 'HttpHeaders:get '.
-                           '{-f|--fetch-headers=: Comma separated headers you want to fetch [i.e. Server,Expires]} '.
-                           '{name} '
-    ;
+                           '{-f|--fetch-headers= : Comma separated headers you want to fetch [i.e. Server,Expires]} '.
+                           '{-u|--urls= : Comma separated URLs you want to fetch} ' .
+    '';
 
     /**
      * The console command description.
@@ -44,37 +44,37 @@ class HttpHeaders extends Command
      */
     public function handle()
     {
-	    $name = $this->argument("name");
+	    // $name = $this->argument("name");
 	    $fetch_headers_str = $this->option('fetch-headers');
+	    $this->info("Headers ${fetch_headers_str}");
+
 	    $fetch_headers = array_merge(['URL', 'HTTP Status Code'],
 		    explode(',', $fetch_headers_str));
-	    var_dump($fetch_headers);
-	    $this->info("Hello $name");
-	    $this->info("Headers ${fetch_headers_str}");
-	    $response = $this->doRequest('GET');
-	    $val = [];
-	    foreach ( $fetch_headers as $header_name ) {
-	    	if ( $response instanceof Response ) {
-			    $val[ $header_name ] = implode(', ', $response->getHeader( $header_name ));
+
+	    $fetch_urls = explode(',', $this->option('urls'));
+
+	    $val = [[]];
+	    foreach ( $fetch_urls as $url ) {
+		    $response = $this->doRequest($url, 'GET');
+		    foreach ( $fetch_headers as $header_name ) {
+			    if ( $response instanceof Response ) {
+				    $val[ $url ][ $header_name ] = implode( ', ', $response->getHeader( $header_name ) );
+			    }
 		    }
+		    $val[$url]['URL'] = $url;
+		    $val[$url]['HTTP Status Code'] = $response->getStatusCode();
 	    }
-	    $val['URL'] = 'http://www.l2tp.org';
-	    $val['HTTP Status Code'] = $response->getStatusCode();
-	    var_dump($fetch_headers, $val);
 	    $this->table($fetch_headers,
 	    	$val);
 	    return true;
     }
 
-    private function doRequest($method) {
-	    $base_url = 'http://www.l2tp.org';
-	    $client = new Client( [
-		    'base_uri' => $base_url,
-	    ] );
+    private function doRequest($url, $method) {
+	    $client = new Client();
 
 	    $path = '/index.html';
 	    try {
-		    $response = $client->request( $method, $path,
+		    $response = $client->request( $method, $url,
 			    [
 				    'allow_redirects' => false,
 			    ] );
